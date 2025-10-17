@@ -32,18 +32,25 @@ async function scanRepository() {
 
   // Parse dependencies and check OSV
   const allVulnerabilities = [];
+  const scannedFiles = [];
   
   for (const file of dependencyFiles) {
     const dependencies = await parseDependencyFile(file);
-    const vulns = await checkOSV(dependencies, file.ecosystem);
+    const vulns = await checkOSV(dependencies, file.ecosystem, file.name);
     allVulnerabilities.push(...vulns);
+    scannedFiles.push({
+      name: file.name,
+      ecosystem: file.ecosystem,
+      dependencyCount: dependencies.length,
+      vulnerabilityCount: vulns.length
+    });
   }
 
   return {
     status: 'success',
     repo: repoInfo,
     vulnerabilities: allVulnerabilities,
-    filesScanned: dependencyFiles.length
+    filesScanned: scannedFiles
   };
 }
 
@@ -181,7 +188,7 @@ function extractDependencies(content, fileName, ecosystem) {
   return dependencies;
 }
 
-async function checkOSV(dependencies, ecosystem) {
+async function checkOSV(dependencies, ecosystem, fileName) {
   const vulnerabilities = [];
   
   // Batch requests to OSV (max 1000 queries per request)
@@ -217,7 +224,9 @@ async function checkOSV(dependencies, ecosystem) {
               id: vuln.id,
               summary: vuln.summary,
               severity: getSeverity(vuln),
-              link: `https://osv.dev/vulnerability/${vuln.id}`
+              link: `https://osv.dev/vulnerability/${vuln.id}`,
+              fileName: fileName,
+              fixedVersions: getFixedVersions(vuln)
             });
           });
         }
@@ -228,6 +237,32 @@ async function checkOSV(dependencies, ecosystem) {
   }
 
   return vulnerabilities;
+}
+
+function getFixedVersions(vuln) {
+  const fixed = [];
+  
+  if (vuln.affected) {
+    vuln.affected.forEach(affected => {
+      if (affected.ranges) {
+        affected.ranges.forEach(range => {
+          if (range.events) {
+            range.events.forEach(event => {
+              if (event.fixed) {
+                fixed.push(event.fixed);
+              }
+            });
+          }
+        });
+      }
+      
+      if (affected.database_specific?.fixed_versions) {
+        fixed.push(...affected.database_specific.fixed_versions);
+      }
+    });
+  }
+  
+  return [...new Set(fixed)]; // Remove duplicates
 }
 
 function getSeverity(vuln) {
@@ -241,12 +276,21 @@ function getSeverity(vuln) {
   return 'UNKNOWN';
 }
 
-// Auto-scan when the page loads (optional)
-// Uncomment if you want automatic scanning
-// window.addEventListener('load', () => {
-//   setTimeout(() => {
-//     scanRepository().then(results => {
-//       chrome.storage.local.set({ lastScan: results });
-//     });
-//   }, 2000);
-// });
+// Auto-scan when the page loads
+window.addEventListener('load', () => {
+  setTimeout(async () => {
+    console.log('Auto-scanning repository...');
+    const results = await scanRepository();
+    
+    // Store results
+    chrome.storage.local.set({ lastScan: results });
+    
+    // Send message to background to open popup if vulnerabilities found
+    if (results.vulnerabilities && results.vulnerabilities.length > 0) {
+      chrome.runtime.sendMessage({ 
+        action: 'scanComplete', 
+        vulnCount: results.vulnerabilities.length 
+      });
+    }
+  }, 2000); // Wait 2 seconds for page to fully load
+});
