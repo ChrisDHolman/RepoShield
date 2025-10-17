@@ -3,7 +3,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
   const resultsDiv = document.getElementById('results');
   
   scanBtn.disabled = true;
-  scanBtn.innerHTML = '<span>⏳ Scanning...</span>';
+  scanBtn.textContent = '⏳ Scanning...';
   
   resultsDiv.innerHTML = `
     <div class="loading">
