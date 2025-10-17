@@ -1,278 +1,614 @@
-document.getElementById('scanBtn').addEventListener('click', async () => {
-  const scanBtn = document.getElementById('scanBtn');
-  const resultsDiv = document.getElementById('results');
-  
-  scanBtn.disabled = true;
-  scanBtn.innerHTML = '<span>⏳ Scanning...</span>';
-  
-  resultsDiv.innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Analyzing dependencies...</div>
-    </div>
-  `;
-
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab.url.includes('github.com')) {
-      resultsDiv.innerHTML = `
-        <div class="status info">
-          <span class="status-icon">ℹ️</span>
-          <div>
-            <strong>Not a GitHub page</strong><br>
-            Please navigate to a GitHub repository to scan for vulnerabilities.
-          </div>
-        </div>
-      `;
-      scanBtn.disabled = false;
-      scanBtn.innerHTML = '<span>🔍 Scan Repository</span>';
-      return;
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    chrome.tabs.sendMessage(tab.id, { action: 'scanRepo' }, (response) => {
-      scanBtn.disabled = false;
-      scanBtn.innerHTML = '<span>🔍 Scan Repository</span>';
-      
-      if (chrome.runtime.lastError) {
-        resultsDiv.innerHTML = `
-          <div class="status danger">
-            <span class="status-icon">❌</span>
-            <div>
-              <strong>Connection Error</strong><br>
-              ${chrome.runtime.lastError.message}<br>
-              <span style="font-size: 12px; opacity: 0.8;">Try refreshing the page.</span>
-            </div>
-          </div>
-        `;
-        return;
+    body {
+      width: 480px;
+      min-height: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      background: #fafbfc;
+      color: #24292f;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .scan-button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scan-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .scan-button:hover::before {
+      left: 100%;
+    }
+
+    .scan-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .scan-button:active {
+      transform: translateY(0);
+    }
+
+    .scan-button:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
       }
-
-      if (response.error) {
-        resultsDiv.innerHTML = `
-          <div class="status danger">
-            <span class="status-icon">❌</span>
-            <div>
-              <strong>Scan Error</strong><br>
-              ${response.error}
-            </div>
-          </div>
-        `;
-        return;
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
+    }
 
-      displayResults(response);
-    });
-  } catch (error) {
-    resultsDiv.innerHTML = `
-      <div class="status danger">
-        <span class="status-icon">❌</span>
+    .status-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .status.safe {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .status.danger {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .status.info {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .repo-info {
+      margin-top: 16px;
+      padding: 16px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .repo-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .repo-name {
+      font-weight: 600;
+      color: #6366f1;
+      font-size: 14px;
+    }
+
+    .repo-meta {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .files-scanned {
+      margin-top: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .file-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .file-item:hover {
+      border-color: #6366f1;
+      box-shadow: 0 2px 4px rgba(99,102,241,0.1);
+    }
+
+    .file-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .file-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .file-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: #24292f;
+      font-size: 13px;
+    }
+
+    .file-stats {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    .file-status {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .file-status.clean {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .file-status.vulnerable {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .summary-item {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      text-align: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .summary-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    .summary-number {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .vulnerabilities {
+      margin-top: 16px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-track {
+      background: #f3f4f6;
+      border-radius: 3px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+
+    .vuln-item {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #dc2626;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .vuln-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateX(2px);
+    }
+
+    .vuln-item.critical {
+      border-left-color: #dc2626;
+    }
+
+    .vuln-item.high {
+      border-left-color: #ea580c;
+    }
+
+    .vuln-item.medium {
+      border-left-color: #f59e0b;
+    }
+
+    .vuln-item.low {
+      border-left-color: #06b6d4;
+    }
+
+    .vuln-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .vuln-id {
+      font-weight: 700;
+      color: #6366f1;
+      font-size: 13px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .severity-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .severity-badge.critical {
+      background: #dc2626;
+      color: white;
+    }
+
+    .severity-badge.high {
+      background: #ea580c;
+      color: white;
+    }
+
+    .severity-badge.medium {
+      background: #f59e0b;
+      color: #451a03;
+    }
+
+    .severity-badge.low {
+      background: #06b6d4;
+      color: white;
+    }
+
+    .severity-badge.unknown {
+      background: #6b7280;
+      color: white;
+    }
+
+    .package-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 6px;
+      border: 1px solid #f3f4f6;
+    }
+
+    .package-icon {
+      font-size: 16px;
+    }
+
+    .package-details {
+      flex: 1;
+    }
+
+    .package-name {
+      font-weight: 600;
+      color: #24292f;
+      font-size: 13px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .package-version {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .vuln-summary {
+      color: #4b5563;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .vuln-fix {
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-left: 3px solid #3b82f6;
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .fix-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .fix-content {
+      flex: 1;
+    }
+
+    .fix-title {
+      font-weight: 700;
+      color: #1e40af;
+      font-size: 12px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .fix-text {
+      font-size: 12px;
+      color: #1e3a8a;
+      line-height: 1.5;
+    }
+
+    .fix-version {
+      display: inline-block;
+      padding: 2px 8px;
+      background: white;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-weight: 600;
+      color: #1e40af;
+      font-size: 11px;
+      margin: 0 2px;
+    }
+
+    .vuln-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .vuln-link {
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .vuln-link:hover {
+      color: #4f46e5;
+      gap: 6px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #6366f1;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #24292f;
+      margin-bottom: 8px;
+    }
+
+    .empty-text {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="logo">&#x1F6E1;&#xFE0F;</div>
         <div>
-          <strong>Unexpected Error</strong><br>
-          ${error.message}
+          <h1>RepoShield</h1>
+          <p>Powered by OSV.dev</p>
         </div>
       </div>
-    `;
-    scanBtn.disabled = false;
-    scanBtn.innerHTML = '<span>🔍 Scan Repository</span>';
-  }
-});
+    </div>
+  </div>
 
-function displayResults(results) {
-  const resultsDiv = document.getElementById('results');
-  const vulnCount = results.vulnerabilities.length;
-  
-  let html = '';
-
-  // Repository info
-  if (results.repo) {
-    html += `
-      <div class="repo-info">
-        <div class="repo-header">
-          <span style="font-size: 16px;">📦</span>
-          <span class="repo-name">${results.repo.owner}/${results.repo.repo}</span>
-        </div>
-        <div class="repo-meta">Scanned for known vulnerabilities</div>
-      </div>
-    `;
-  }
-
-  // Files scanned
-  if (results.filesScanned && results.filesScanned.length > 0) {
-    html += '<div class="files-scanned">';
-    html += '<div class="section-title">📄 Dependency Files</div>';
-    results.filesScanned.forEach(file => {
-      const isVulnerable = file.vulnerabilityCount > 0;
-      const statusClass = isVulnerable ? 'vulnerable' : 'clean';
-      const statusText = isVulnerable 
-        ? `${file.vulnerabilityCount} issue${file.vulnerabilityCount > 1 ? 's' : ''}`
-        : 'Clean';
-      
-      // Get emoji based on file type
-      let fileEmoji = '📄';
-      if (file.name.includes('package')) fileEmoji = '📦';
-      else if (file.name.includes('requirements')) fileEmoji = '🐍';
-      else if (file.name.includes('go.')) fileEmoji = '🔷';
-      else if (file.name.includes('Gemfile')) fileEmoji = '💎';
-      else if (file.name.includes('Cargo')) fileEmoji = '🦀';
-      else if (file.name.includes('composer')) fileEmoji = '🐘';
-      
-      html += `
-        <div class="file-item">
-          <div class="file-left">
-            <div class="file-icon">${fileEmoji}</div>
-            <div class="file-details">
-              <div class="file-name">${file.name}</div>
-              <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'}</div>
-            </div>
-          </div>
-          <div class="file-status ${statusClass}">${statusText}</div>
-        </div>
-      `;
-    });
-    html += '</div>';
-  }
-
-  // Status message
-  if (vulnCount === 0) {
-    html += `
-      <div class="status safe">
-        <span class="status-icon">✅</span>
-        <div>
-          <strong>All Clear!</strong><br>
-          No known vulnerabilities detected in your dependencies.
-        </div>
-      </div>
-    `;
-  } else {
-    const criticalCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('critical')).length;
-    const highCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('high')).length;
-    const mediumCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('medium') || v.severity.toLowerCase().includes('moderate')).length;
-
-    html += `
-      <div class="status danger">
-        <span class="status-icon">⚠️</span>
-        <div>
-          <strong>Vulnerabilities Detected</strong><br>
-          Found ${vulnCount} ${vulnCount === 1 ? 'security issue' : 'security issues'} in your dependencies.
-        </div>
-      </div>
-    `;
-
-    // Summary cards
-    html += `
-      <div class="summary">
-        <div class="summary-item">
-          <div class="summary-number" style="color: #dc2626">${criticalCount}</div>
-          <div class="summary-label">Critical</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-number" style="color: #ea580c">${highCount}</div>
-          <div class="summary-label">High</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-number" style="color: #f59e0b">${mediumCount}</div>
-          <div class="summary-label">Medium</div>
-        </div>
-      </div>
-    `;
-
-    // Vulnerability list
-    html += '<div class="section-title" style="margin-top: 20px;">🔍 Vulnerabilities</div>';
-    html += '<div class="vulnerabilities">';
+  <div class="content">
+    <button class="scan-button" id="scanBtn">Scan Repository</button>
     
-    // Sort by severity
-    const severityOrder = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'MODERATE': 2, 'LOW': 3, 'UNKNOWN': 4 };
-    results.vulnerabilities.sort((a, b) => {
-      const aOrder = severityOrder[a.severity.toUpperCase()] ?? 4;
-      const bOrder = severityOrder[b.severity.toUpperCase()] ?? 4;
-      return aOrder - bOrder;
-    });
+    <div id="results"></div>
+  </div>
 
-    results.vulnerabilities.forEach(vuln => {
-      const severityClass = vuln.severity.toLowerCase().replace('moderate', 'medium');
-      
-      html += `
-        <div class="vuln-item ${severityClass}">
-          <div class="vuln-header">
-            <span class="vuln-id">${vuln.id}</span>
-            <span class="severity-badge ${severityClass}">${vuln.severity}</span>
-          </div>
-          
-          <div class="package-info">
-            <span class="package-icon">📦</span>
-            <div class="package-details">
-              <div class="package-name">${vuln.package}</div>
-              <div class="package-version">Current version: ${vuln.version} ${vuln.fileName ? `• from ${vuln.fileName}` : ''}</div>
-            </div>
-          </div>
-          
-          <div class="vuln-summary">${vuln.summary || 'No description available for this vulnerability.'}</div>
-      `;
-      
-      // Enhanced fix suggestion
-      if (vuln.fixedVersions && vuln.fixedVersions.length > 0) {
-        const fixVersions = vuln.fixedVersions.slice(0, 3); // Show up to 3 versions
-        const versionsHtml = fixVersions.map(v => `<span class="fix-version">${v}</span>`).join(' or ');
-        
-        html += `
-          <div class="vuln-fix">
-            <span class="fix-icon">💡</span>
-            <div class="fix-content">
-              <div class="fix-title">Fix Available</div>
-              <div class="fix-text">Upgrade to version ${versionsHtml} or later to resolve this vulnerability.</div>
-            </div>
-          </div>
-        `;
-      } else {
-        // Show message when no fix version is explicitly available
-        html += `
-          <div class="vuln-fix" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b;">
-            <span class="fix-icon">⚠️</span>
-            <div class="fix-content">
-              <div class="fix-title" style="color: #92400e;">Check for Updates</div>
-              <div class="fix-text" style="color: #78350f;">No specific fix version found. Check the vulnerability details for mitigation guidance.</div>
-            </div>
-          </div>
-        `;
-      }
-      
-      html += `
-          <div class="vuln-meta">
-            <a href="${vuln.link}" target="_blank" class="vuln-link">
-              View Details →
-            </a>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-  }
-
-  // Empty state for no dependency files
-  if (!results.filesScanned || results.filesScanned.length === 0) {
-    html += `
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-title">No Dependency Files Found</div>
-        <div class="empty-text">
-          This repository doesn't contain any supported dependency files.<br>
-          We look for package.json, requirements.txt, go.mod, and more.
-        </div>
-      </div>
-    `;
-  }
-
-  resultsDiv.innerHTML = html;
-}
-
-// Load cached results on popup open
-chrome.storage.local.get(['lastScan'], (result) => {
-  if (result.lastScan && result.lastScan.status === 'success') {
-    displayResults(result.lastScan);
-  }
-});
+  <script src="popup.js"></script>
+</body>
+</html>
