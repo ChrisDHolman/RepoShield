@@ -50,10 +50,27 @@ function displayResults(results) {
   if (results.repo) {
     html += `
       <div class="repo-info">
-        <strong>Repository:</strong> ${results.repo.owner}/${results.repo.repo}<br>
-        <strong>Files Scanned:</strong> ${results.filesScanned || 0}
+        <strong>Repository:</strong> ${results.repo.owner}/${results.repo.repo}
       </div>
     `;
+  }
+
+  // Files scanned
+  if (results.filesScanned && results.filesScanned.length > 0) {
+    html += '<div class="files-scanned">';
+    html += '<strong style="font-size: 13px; color: #333;">📁 Files Scanned:</strong>';
+    results.filesScanned.forEach(file => {
+      const vulnText = file.vulnerabilityCount > 0 
+        ? `<span style="color: #dc3545;">${file.vulnerabilityCount} issue${file.vulnerabilityCount > 1 ? 's' : ''}</span>`
+        : `<span style="color: #28a745;">✓ Clean</span>`;
+      html += `
+        <div class="file-item">
+          <span class="file-name">${file.name}</span>
+          <span class="file-stats">${file.dependencyCount} deps · ${vulnText}</span>
+        </div>
+      `;
+    });
+    html += '</div>';
   }
 
   // Status message
@@ -117,6 +134,19 @@ function displayResults(results) {
           </div>
           <div class="package-name">📦 ${vuln.package} (${vuln.version})</div>
           <div class="vuln-summary">${vuln.summary || 'No description available'}</div>
+      `;
+      
+      // Add fix suggestion if available
+      if (vuln.fixedVersions && vuln.fixedVersions.length > 0) {
+        const fixVersion = vuln.fixedVersions[0];
+        html += `
+          <div class="vuln-fix">
+            <strong>💡 Fix Available:</strong> Upgrade to version <code>${fixVersion}</code> or later
+          </div>
+        `;
+      }
+      
+      html += `
           <a href="${vuln.link}" target="_blank" class="vuln-link">View details →</a>
         </div>
       `;
