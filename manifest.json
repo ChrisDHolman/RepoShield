@@ -16,9 +16,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://github.com/*/*"],
+      "matches": ["https://github.com/*/*", "https://github.com/*/*/*"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ],
   "action": {
