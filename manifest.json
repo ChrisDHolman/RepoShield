@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GitHub OSV Vulnerability Scanner",
+  "name": "RepoShield",
   "version": "1.0.0",
   "description": "Scans GitHub repositories for vulnerable dependencies using OSV.dev",
   "permissions": [
