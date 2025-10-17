@@ -217,13 +217,16 @@ async function checkOSV(dependencies, ecosystem, fileName) {
         if (result.vulns && result.vulns.length > 0) {
           const dep = batch[index];
           result.vulns.forEach(vuln => {
+            const severity = getSeverity(vuln);
+            console.log(`Vulnerability ${vuln.id}: severity = ${severity}`, vuln.severity);
+            
             vulnerabilities.push({
               package: dep.name,
               version: dep.version,
               ecosystem: dep.ecosystem,
               id: vuln.id,
               summary: vuln.summary,
-              severity: getSeverity(vuln),
+              severity: severity,
               link: `https://osv.dev/vulnerability/${vuln.id}`,
               fileName: fileName,
               fixedVersions: getFixedVersions(vuln)
@@ -294,13 +297,48 @@ function getFixedVersions(vuln) {
 
 function getSeverity(vuln) {
   // Try to extract severity from various fields
-  if (vuln.database_specific?.severity) {
-    return vuln.database_specific.severity;
+  
+  // Check severity array first (most common in OSV)
+  if (vuln.severity && Array.isArray(vuln.severity)) {
+    for (const sev of vuln.severity) {
+      if (sev.type === 'CVSS_V3' && sev.score) {
+        // Convert CVSS score to severity level
+        const score = parseFloat(sev.score);
+        if (score >= 9.0) return 'CRITICAL';
+        if (score >= 7.0) return 'HIGH';
+        if (score >= 4.0) return 'MEDIUM';
+        return 'LOW';
+      }
+    }
   }
-  if (vuln.severity) {
-    return Array.isArray(vuln.severity) ? vuln.severity[0]?.type : vuln.severity;
+  
+  // Check database_specific severity
+  if (vuln.database_specific) {
+    if (vuln.database_specific.severity) {
+      return vuln.database_specific.severity.toUpperCase();
+    }
+    if (vuln.database_specific.cvss_score) {
+      const score = parseFloat(vuln.database_specific.cvss_score);
+      if (score >= 9.0) return 'CRITICAL';
+      if (score >= 7.0) return 'HIGH';
+      if (score >= 4.0) return 'MEDIUM';
+      return 'LOW';
+    }
   }
-  return 'UNKNOWN';
+  
+  // Check ecosystem_specific
+  if (vuln.ecosystem_specific && vuln.ecosystem_specific.severity) {
+    return vuln.ecosystem_specific.severity.toUpperCase();
+  }
+  
+  // Check top-level severity field
+  if (vuln.severity && typeof vuln.severity === 'string') {
+    return vuln.severity.toUpperCase();
+  }
+  
+  // Default to MEDIUM if we can't determine
+  console.log('Could not determine severity for', vuln.id, '- defaulting to MEDIUM');
+  return 'MEDIUM';
 }
 
 // Auto-scan when the page loads
