@@ -1,367 +1,634 @@
-// Content script that runs on GitHub pages
-console.log('GitHub OSV Scanner: Content script loaded');
-
-// Listen for scan requests from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'scanRepo') {
-    scanRepository().then(sendResponse);
-    return true; // Will respond asynchronously
-  }
-});
-
-async function scanRepository() {
-  const repoInfo = extractRepoInfo();
-  
-  if (!repoInfo) {
-    return { error: 'Not a valid GitHub repository page' };
-  }
-
-  console.log('Scanning repository:', repoInfo);
-
-  // Find dependency files
-  const dependencyFiles = await findDependencyFiles();
-  
-  if (dependencyFiles.length === 0) {
-    return {
-      status: 'success',
-      repo: repoInfo,
-      vulnerabilities: [],
-      message: 'No dependency files found'
-    };
-  }
-
-  // Parse dependencies and check OSV
-  const allVulnerabilities = [];
-  const scannedFiles = [];
-  
-  for (const file of dependencyFiles) {
-    const dependencies = await parseDependencyFile(file);
-    const vulns = await checkOSV(dependencies, file.ecosystem, file.name);
-    allVulnerabilities.push(...vulns);
-    scannedFiles.push({
-      name: file.name,
-      ecosystem: file.ecosystem,
-      dependencyCount: dependencies.length,
-      vulnerabilityCount: vulns.length
-    });
-  }
-
-  return {
-    status: 'success',
-    repo: repoInfo,
-    vulnerabilities: allVulnerabilities,
-    filesScanned: scannedFiles
-  };
-}
-
-function extractRepoInfo() {
-  const pathParts = window.location.pathname.split('/').filter(p => p);
-  
-  if (pathParts.length >= 2) {
-    return {
-      owner: pathParts[0],
-      repo: pathParts[1],
-      url: window.location.href
-    };
-  }
-  
-  return null;
-}
-
-async function findDependencyFiles() {
-  const files = [];
-  
-  // Check for common dependency files in the file tree
-  const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a');
-  
-  const dependencyFileMap = {
-    'package.json': 'npm',
-    'package-lock.json': 'npm',
-    'yarn.lock': 'npm',
-    'requirements.txt': 'PyPI',
-    'Pipfile': 'PyPI',
-    'Pipfile.lock': 'PyPI',
-    'go.mod': 'Go',
-    'go.sum': 'Go',
-    'Gemfile': 'RubyGems',
-    'Gemfile.lock': 'RubyGems',
-    'pom.xml': 'Maven',
-    'build.gradle': 'Maven',
-    'Cargo.toml': 'crates.io',
-    'Cargo.lock': 'crates.io',
-    'composer.json': 'Packagist',
-    'composer.lock': 'Packagist'
-  };
-
-  fileLinks.forEach(link => {
-    const fileName = link.textContent.trim();
-    if (dependencyFileMap[fileName]) {
-      // Extract the full path from the URL
-      const url = link.href;
-      const pathMatch = url.match(/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/(.+)/);
-      const fullPath = pathMatch ? pathMatch[1] : fileName;
-      
-      files.push({
-        name: fileName,
-        fullPath: fullPath,
-        ecosystem: dependencyFileMap[fileName],
-        url: link.href
-      });
+.file-item-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
     }
-  });
 
-  return files;
-}
+    .file-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: white;
+      bor<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-async function parseDependencyFile(file) {
-  // Fetch the raw file content
-  const rawUrl = file.url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
-  
-  try {
-    const response = await fetch(rawUrl);
-    const content = await response.text();
+    body {
+      width: 480px;
+      min-height: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      background: #fafbfc;
+      color: #24292f;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .scan-button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scan-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .scan-button:hover::before {
+      left: 100%;
+    }
+
+    .scan-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .scan-button:active {
+      transform: translateY(0);
+    }
+
+    .scan-button:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .status-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .status.safe {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .status.danger {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .status.info {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .repo-info {
+      margin-top: 16px;
+      padding: 16px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .repo-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .repo-name {
+      font-weight: 600;
+      color: #6366f1;
+      font-size: 14px;
+    }
+
+    .repo-meta {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .files-scanned {
+      margin-top: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .file-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .file-item:hover {
+      border-color: #6366f1;
+      box-shadow: 0 2px 4px rgba(99,102,241,0.1);
+    }
+
+    .file-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .file-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .file-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: #24292f;
+      font-size: 13px;
+    }
+
+    .file-name-link {
+      text-decoration: none;
+      color: inherit;
+      transition: color 0.2s ease;
+    }
+
+    .file-name-link:hover .file-name {
+      color: #6366f1;
+    }
+
+    .file-stats {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    .file-status {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .file-status.clean {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .file-status.vulnerable {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .summary-item {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      text-align: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    .summary-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    .summary-number {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .vulnerabilities {
+      margin-top: 16px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-track {
+      background: #f3f4f6;
+      border-radius: 3px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+
+    .vulnerabilities::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+
+    .vuln-item {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #dc2626;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .vuln-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateX(2px);
+    }
+
+    .vuln-item.critical {
+      border-left-color: #dc2626;
+    }
+
+    .vuln-item.high {
+      border-left-color: #ea580c;
+    }
+
+    .vuln-item.medium {
+      border-left-color: #f59e0b;
+    }
+
+    .vuln-item.low {
+      border-left-color: #06b6d4;
+    }
+
+    .vuln-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .vuln-id {
+      font-weight: 700;
+      color: #6366f1;
+      font-size: 13px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .severity-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .severity-badge.critical {
+      background: #dc2626;
+      color: white;
+    }
+
+    .severity-badge.high {
+      background: #ea580c;
+      color: white;
+    }
+
+    .severity-badge.medium {
+      background: #f59e0b;
+      color: #451a03;
+    }
+
+    .severity-badge.low {
+      background: #06b6d4;
+      color: white;
+    }
+
+    .severity-badge.unknown {
+      background: #6b7280;
+      color: white;
+    }
+
+    .package-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 6px;
+      border: 1px solid #f3f4f6;
+    }
+
+    .package-icon {
+      font-size: 16px;
+    }
+
+    .package-details {
+      flex: 1;
+    }
+
+    .package-name {
+      font-weight: 600;
+      color: #24292f;
+      font-size: 13px;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .package-version {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .vuln-summary {
+      color: #4b5563;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .vuln-fix {
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-left: 3px solid #3b82f6;
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .fix-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .fix-content {
+      flex: 1;
+    }
+
+    .fix-title {
+      font-weight: 700;
+      color: #1e40af;
+      font-size: 12px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .fix-text {
+      font-size: 12px;
+      color: #1e3a8a;
+      line-height: 1.5;
+    }
+
+    .fix-version {
+      display: inline-block;
+      padding: 2px 8px;
+      background: white;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-weight: 600;
+      color: #1e40af;
+      font-size: 11px;
+      margin: 0 2px;
+    }
+
+    .vuln-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .vuln-link {
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .vuln-link:hover {
+      color: #4f46e5;
+      gap: 6px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #6366f1;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #24292f;
+      margin-bottom: 8px;
+    }
+
+    .empty-text {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="logo">&#x1F6E1;&#xFE0F;</div>
+        <div>
+          <h1>RepoShield</h1>
+          <p>Powered by OSV.dev</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <button class="scan-button" id="scanBtn">Scan Repository</button>
     
-    return extractDependencies(content, file.name, file.ecosystem);
-  } catch (error) {
-    console.error('Error fetching file:', error);
-    return [];
-  }
-}
+    <div id="results"></div>
+  </div>
 
-function extractDependencies(content, fileName, ecosystem) {
-  const dependencies = [];
-
-  try {
-    if (fileName === 'package.json') {
-      const pkg = JSON.parse(content);
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      
-      for (const [name, version] of Object.entries(deps || {})) {
-        dependencies.push({
-          name,
-          version: version.replace(/^[\^~]/, ''), // Remove ^ or ~
-          ecosystem: 'npm'
-        });
-      }
-    } else if (fileName === 'requirements.txt') {
-      const lines = content.split('\n');
-      lines.forEach(line => {
-        const match = line.match(/^([a-zA-Z0-9\-_]+)==([0-9.]+)/);
-        if (match) {
-          dependencies.push({
-            name: match[1],
-            version: match[2],
-            ecosystem: 'PyPI'
-          });
-        }
-      });
-    } else if (fileName === 'go.mod') {
-      const lines = content.split('\n');
-      lines.forEach(line => {
-        const match = line.match(/^\s+([^\s]+)\s+v([0-9.]+)/);
-        if (match) {
-          dependencies.push({
-            name: match[1],
-            version: match[2],
-            ecosystem: 'Go'
-          });
-        }
-      });
-    } else if (fileName === 'Gemfile.lock') {
-      const lines = content.split('\n');
-      let inSpecs = false;
-      lines.forEach(line => {
-        if (line.trim() === 'specs:') {
-          inSpecs = true;
-          return;
-        }
-        if (inSpecs) {
-          const match = line.match(/^\s+([a-z0-9\-_]+)\s+\(([0-9.]+)\)/i);
-          if (match) {
-            dependencies.push({
-              name: match[1],
-              version: match[2],
-              ecosystem: 'RubyGems'
-            });
-          }
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Error parsing dependencies:', error);
-  }
-
-  return dependencies;
-}
-
-async function checkOSV(dependencies, ecosystem, fileName) {
-  const vulnerabilities = [];
-  
-  // Batch requests to OSV (max 1000 queries per request)
-  const batchSize = 100;
-  
-  for (let i = 0; i < dependencies.length; i += batchSize) {
-    const batch = dependencies.slice(i, i + batchSize);
-    const queries = batch.map(dep => ({
-      package: {
-        name: dep.name,
-        ecosystem: dep.ecosystem
-      },
-      version: dep.version
-    }));
-
-    try {
-      const response = await fetch('https://api.osv.dev/v1/querybatch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queries })
-      });
-
-      const results = await response.json();
-      
-      results.results.forEach((result, index) => {
-        if (result.vulns && result.vulns.length > 0) {
-          const dep = batch[index];
-          result.vulns.forEach(vuln => {
-            const severity = getSeverity(vuln);
-            console.log(`Vulnerability ${vuln.id}: severity = ${severity}`, vuln.severity);
-            
-            vulnerabilities.push({
-              package: dep.name,
-              version: dep.version,
-              ecosystem: dep.ecosystem,
-              id: vuln.id,
-              summary: vuln.summary,
-              severity: severity,
-              link: `https://osv.dev/vulnerability/${vuln.id}`,
-              fileName: fileName,
-              fixedVersions: getFixedVersions(vuln)
-            });
-          });
-        }
-      });
-    } catch (error) {
-      console.error('Error querying OSV:', error);
-    }
-  }
-
-  return vulnerabilities;
-}
-
-function getFixedVersions(vuln) {
-  const fixed = [];
-  
-  if (vuln.affected) {
-    vuln.affected.forEach(affected => {
-      if (affected.ranges) {
-        affected.ranges.forEach(range => {
-          if (range.events) {
-            range.events.forEach(event => {
-              if (event.fixed) {
-                fixed.push(event.fixed);
-              }
-            });
-          }
-        });
-      }
-      
-      // Also check for versions array (patched versions)
-      if (affected.versions) {
-        // Find the last known vulnerable version, next would be fixed
-        const sortedVersions = affected.versions.sort();
-        // This is a simplified approach - in reality version sorting is complex
-      }
-      
-      if (affected.database_specific) {
-        if (affected.database_specific.fixed_versions) {
-          fixed.push(...affected.database_specific.fixed_versions);
-        }
-        if (affected.database_specific.patched_versions) {
-          fixed.push(...affected.database_specific.patched_versions);
-        }
-      }
-    });
-  }
-  
-  // Also check top-level database_specific
-  if (vuln.database_specific) {
-    if (vuln.database_specific.fixed_versions) {
-      fixed.push(...vuln.database_specific.fixed_versions);
-    }
-    if (vuln.database_specific.patched_versions) {
-      fixed.push(...vuln.database_specific.patched_versions);
-    }
-  }
-  
-  // Remove duplicates and clean up versions
-  const uniqueFixed = [...new Set(fixed)].map(v => v.replace(/^v/, ''));
-  
-  console.log('Fixed versions found for', vuln.id, ':', uniqueFixed);
-  
-  return uniqueFixed;
-}
-
-function getSeverity(vuln) {
-  // Try to extract severity from various fields
-  
-  // Check severity array first (most common in OSV)
-  if (vuln.severity && Array.isArray(vuln.severity)) {
-    for (const sev of vuln.severity) {
-      if (sev.type === 'CVSS_V3' && sev.score) {
-        // Convert CVSS score to severity level
-        const score = parseFloat(sev.score);
-        if (score >= 9.0) return 'CRITICAL';
-        if (score >= 7.0) return 'HIGH';
-        if (score >= 4.0) return 'MEDIUM';
-        return 'LOW';
-      }
-    }
-  }
-  
-  // Check database_specific severity
-  if (vuln.database_specific) {
-    if (vuln.database_specific.severity) {
-      return vuln.database_specific.severity.toUpperCase();
-    }
-    if (vuln.database_specific.cvss_score) {
-      const score = parseFloat(vuln.database_specific.cvss_score);
-      if (score >= 9.0) return 'CRITICAL';
-      if (score >= 7.0) return 'HIGH';
-      if (score >= 4.0) return 'MEDIUM';
-      return 'LOW';
-    }
-  }
-  
-  // Check ecosystem_specific
-  if (vuln.ecosystem_specific && vuln.ecosystem_specific.severity) {
-    return vuln.ecosystem_specific.severity.toUpperCase();
-  }
-  
-  // Check top-level severity field
-  if (vuln.severity && typeof vuln.severity === 'string') {
-    return vuln.severity.toUpperCase();
-  }
-  
-  // Default to MEDIUM if we can't determine
-  console.log('Could not determine severity for', vuln.id, '- defaulting to MEDIUM');
-  return 'MEDIUM';
-}
-
-// Auto-scan when the page loads
-window.addEventListener('load', () => {
-  setTimeout(async () => {
-    console.log('Auto-scanning repository...');
-    const results = await scanRepository();
-    
-    // Store results
-    chrome.storage.local.set({ lastScan: results });
-    
-    // Send message to background to open popup if vulnerabilities found
-    if (results.vulnerabilities && results.vulnerabilities.length > 0) {
-      chrome.runtime.sendMessage({ 
-        action: 'scanComplete', 
-        vulnCount: results.vulnerabilities.length 
-      });
-    }
-  }, 2000); // Wait 2 seconds for page to fully load
-});
+  <script src="popup.js"></script>
+</body>
+</html>
