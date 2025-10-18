@@ -117,12 +117,17 @@ function displayResults(results) {
       else if (file.name.includes('Cargo')) fileEmoji = '&#x1F980;';
       else if (file.name.includes('composer')) fileEmoji = '&#x1F418;';
       
+      const pathDisplay = file.fullPath || file.name;
+      const fileUrl = file.url || '#';
+      
       html += `
         <div class="file-item">
           <div class="file-left">
             <div class="file-icon">${fileEmoji}</div>
             <div class="file-details">
-              <div class="file-name">${file.name}</div>
+              <a href="${fileUrl}" target="_blank" class="file-name-link">
+                <div class="file-name">${pathDisplay}</div>
+              </a>
               <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'}</div>
             </div>
           </div>
