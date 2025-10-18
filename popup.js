@@ -101,6 +101,9 @@ function displayResults(results) {
   if (results.filesScanned && results.filesScanned.length > 0) {
     html += '<div class="files-scanned">';
     html += '<div class="section-title">&#x1F4C4; Dependency Files</div>';
+    
+    console.log('Files to display:', results.filesScanned);
+    
     results.filesScanned.forEach(file => {
       const isVulnerable = file.vulnerabilityCount > 0;
       const statusClass = isVulnerable ? 'vulnerable' : 'clean';
@@ -117,22 +120,24 @@ function displayResults(results) {
       else if (file.name.includes('Cargo')) fileEmoji = '&#x1F980;';
       else if (file.name.includes('composer')) fileEmoji = '&#x1F418;';
       
-      const pathDisplay = file.fullPath || file.name;
+      const displayPath = file.fullPath || file.name;
       const fileUrl = file.url || '#';
       
+      console.log('Displaying file:', file.name, 'Path:', displayPath, 'URL:', fileUrl);
+      
       html += `
-        <div class="file-item">
-          <div class="file-left">
-            <div class="file-icon">${fileEmoji}</div>
-            <div class="file-details">
-              <a href="${fileUrl}" target="_blank" class="file-name-link">
-                <div class="file-name">${pathDisplay}</div>
-              </a>
-              <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'}</div>
+        <a href="${fileUrl}" target="_blank" class="file-item-link">
+          <div class="file-item">
+            <div class="file-left">
+              <div class="file-icon">${fileEmoji}</div>
+              <div class="file-details">
+                <div class="file-name">${displayPath}</div>
+                <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'} &bull; ${file.ecosystem}</div>
+              </div>
             </div>
+            <div class="file-status ${statusClass}">${statusText}</div>
           </div>
-          <div class="file-status ${statusClass}">${statusText}</div>
-        </div>
+        </a>
       `;
     });
     html += '</div>';
@@ -150,12 +155,23 @@ function displayResults(results) {
       </div>
     `;
   } else {
-    const criticalCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('critical')).length;
-    const highCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('high')).length;
-    const mediumCount = results.vulnerabilities.filter(v => 
-      v.severity.toLowerCase().includes('medium') || v.severity.toLowerCase().includes('moderate')).length;
+    const criticalCount = results.vulnerabilities.filter(v => {
+      const sev = v.severity.toUpperCase();
+      return sev === 'CRITICAL';
+    }).length;
+    
+    const highCount = results.vulnerabilities.filter(v => {
+      const sev = v.severity.toUpperCase();
+      return sev === 'HIGH';
+    }).length;
+    
+    const mediumCount = results.vulnerabilities.filter(v => {
+      const sev = v.severity.toUpperCase();
+      return sev === 'MEDIUM' || sev === 'MODERATE';
+    }).length;
+
+    console.log('Severity breakdown:', { criticalCount, highCount, mediumCount, total: vulnCount });
+    console.log('All severities:', results.vulnerabilities.map(v => v.severity));
 
     html += `
       <div class="status danger">
