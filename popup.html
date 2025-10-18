@@ -214,6 +214,12 @@
       gap: 6px;
     }
 
+    .file-item-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
     .file-item {
       padding: 12px;
       margin-bottom: 8px;
@@ -225,11 +231,13 @@
       align-items: center;
       transition: all 0.2s ease;
       box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      cursor: pointer;
     }
 
-    .file-item:hover {
+    .file-item-link:hover .file-item {
       border-color: #6366f1;
-      box-shadow: 0 2px 4px rgba(99,102,241,0.1);
+      box-shadow: 0 2px 8px rgba(99,102,241,0.15);
+      background: #fafbff;
     }
 
     .file-left {
