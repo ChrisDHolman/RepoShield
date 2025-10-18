@@ -96,8 +96,14 @@ async function findDependencyFiles() {
   fileLinks.forEach(link => {
     const fileName = link.textContent.trim();
     if (dependencyFileMap[fileName]) {
+      // Extract the full path from the URL
+      const url = link.href;
+      const pathMatch = url.match(/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/(.+)/);
+      const fullPath = pathMatch ? pathMatch[1] : fileName;
+      
       files.push({
         name: fileName,
+        fullPath: fullPath,
         ecosystem: dependencyFileMap[fileName],
         url: link.href
       });
