@@ -121,21 +121,6 @@ function displayResults(results) {
     
     console.log('Files to display:', results.filesScanned);
     
-    // Check if any npm files exist
-    const hasNpmFiles = results.filesScanned.some(file => file.ecosystem === 'npm');
-    
-    if (hasNpmFiles) {
-      html += `
-        <div class="malware-notice">
-          <span style="font-size: 16px;">&#x1F6E1;&#xFE0F;</span>
-          <div class="malware-notice-text">
-            <strong>Malware Scanning Available</strong>
-            <div style="font-size: 11px; margin-top: 2px;">Click "Check Malware" on npm packages to scan with Aikido Intel</div>
-          </div>
-        </div>
-      `;
-    }
-    
     results.filesScanned.forEach(file => {
       const isVulnerable = file.vulnerabilityCount > 0;
       const statusClass = isVulnerable ? 'vulnerable' : 'clean';
