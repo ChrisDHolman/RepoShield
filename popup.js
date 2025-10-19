@@ -80,7 +80,13 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
 function displayResults(results) {
   const resultsDiv = document.getElementById('results');
+  const emptyScanState = document.getElementById('emptyScanState');
   const vulnCount = results.vulnerabilities.length;
+  
+  // Hide empty state when results appear
+  if (emptyScanState) {
+    emptyScanState.style.display = 'none';
+  }
   
   let html = '';
 
