@@ -72,6 +72,7 @@ function extractRepoInfo() {
 
 async function findDependencyFiles() {
   const files = [];
+  const seenUrls = new Set(); // Track URLs we've already added
   
   // Check for common dependency files in the file tree
   const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
@@ -101,11 +102,17 @@ async function findDependencyFiles() {
       // Extract the full path from the URL
       const url = link.href;
       
-      // Make sure we have a valid absolute URL
-      if (!url || url === '#' || url.startsWith('chrome-extension://')) {
-        console.warn('Invalid URL for file:', fileName, url);
+      // Make sure we have a valid absolute URL and haven't seen it before
+      if (!url || url === '#' || url.startsWith('chrome-extension://') || seenUrls.has(url)) {
+        if (seenUrls.has(url)) {
+          console.log('Skipping duplicate file:', fileName, url);
+        } else {
+          console.warn('Invalid URL for file:', fileName, url);
+        }
         return;
       }
+      
+      seenUrls.add(url); // Mark this URL as seen
       
       console.log('Found dependency file:', fileName, 'Full URL:', url);
       
@@ -135,7 +142,7 @@ async function findDependencyFiles() {
     }
   });
 
-  console.log('Total dependency files found:', files.length, files);
+  console.log('Total unique dependency files found:', files.length, files);
   return files;
 }
 
