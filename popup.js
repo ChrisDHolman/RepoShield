@@ -95,6 +95,17 @@ function displayResults(results) {
         <div class="repo-meta">Scanned for known vulnerabilities</div>
       </div>
     `;
+    
+    // Add monorepo notice if applicable
+    html += `
+      <div class="monorepo-notice">
+        <span style="font-size: 14px;">&#x1F4C1;</span>
+        <div class="monorepo-notice-text">
+          <strong>Scanning visible files only</strong>
+          <div style="font-size: 11px; margin-top: 2px;">For monorepos: Navigate into subdirectories (e.g., packages/) and scan again</div>
+        </div>
+      </div>
+    `;
   }
 
   // Files scanned
