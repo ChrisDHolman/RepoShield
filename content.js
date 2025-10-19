@@ -26,7 +26,7 @@ async function scanRepository() {
       status: 'success',
       repo: repoInfo,
       vulnerabilities: [],
-      message: 'No dependency files found'
+      filesScanned: []
     };
   }
 
