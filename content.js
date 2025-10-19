@@ -257,30 +257,53 @@ async function checkOSV(dependencies, ecosystem, fileName) {
 
       const results = await response.json();
       
-      results.results.forEach((result, index) => {
+      // Process each result
+      for (let index = 0; index < results.results.length; index++) {
+        const result = results.results[index];
         if (result.vulns && result.vulns.length > 0) {
           const dep = batch[index];
-          result.vulns.forEach(vuln => {
-            const severity = getSeverity(vuln);
-            console.log(`Vulnerability ${vuln.id}: severity = ${severity}`, vuln.severity);
-            
-            // Log the entire vulnerability object to see its structure
-            console.log(`Full vulnerability data for ${vuln.id}:`, JSON.stringify(vuln, null, 2));
-            
-            vulnerabilities.push({
-              package: dep.name,
-              version: dep.version,
-              ecosystem: dep.ecosystem,
-              id: vuln.id,
-              summary: vuln.summary,
-              severity: severity,
-              link: `https://osv.dev/vulnerability/${vuln.id}`,
-              fileName: fileName,
-              fixedVersions: getFixedVersions(vuln)
-            });
-          });
+          
+          // For each vulnerability ID, fetch the full details
+          for (const vulnSummary of result.vulns) {
+            try {
+              // Fetch full vulnerability details
+              const detailResponse = await fetch(`https://api.osv.dev/v1/vulns/${vulnSummary.id}`);
+              const vuln = await detailResponse.json();
+              
+              const severity = getSeverity(vuln);
+              console.log(`Vulnerability ${vuln.id}: severity = ${severity}`);
+              
+              const fixedVersions = getFixedVersions(vuln);
+              
+              vulnerabilities.push({
+                package: dep.name,
+                version: dep.version,
+                ecosystem: dep.ecosystem,
+                id: vuln.id,
+                summary: vuln.summary,
+                severity: severity,
+                link: `https://osv.dev/vulnerability/${vuln.id}`,
+                fileName: fileName,
+                fixedVersions: fixedVersions
+              });
+            } catch (error) {
+              console.error(`Error fetching details for ${vulnSummary.id}:`, error);
+              // Add with minimal info if detail fetch fails
+              vulnerabilities.push({
+                package: dep.name,
+                version: dep.version,
+                ecosystem: dep.ecosystem,
+                id: vulnSummary.id,
+                summary: 'Unable to fetch vulnerability details',
+                severity: 'MEDIUM',
+                link: `https://osv.dev/vulnerability/${vulnSummary.id}`,
+                fileName: fileName,
+                fixedVersions: []
+              });
+            }
+          }
         }
-      });
+      }
     } catch (error) {
       console.error('Error querying OSV:', error);
     }
@@ -292,26 +315,13 @@ async function checkOSV(dependencies, ecosystem, fileName) {
 function getFixedVersions(vuln) {
   const fixed = [];
   
-  console.log(`Analyzing fix versions for ${vuln.id}`);
-  
   if (vuln.affected) {
-    console.log(`Found ${vuln.affected.length} affected entries`);
-    vuln.affected.forEach((affected, affectedIndex) => {
-      console.log(`Affected entry ${affectedIndex}:`, {
-        package: affected.package,
-        ranges: affected.ranges,
-        database_specific: affected.database_specific
-      });
-      
+    vuln.affected.forEach((affected) => {
       if (affected.ranges) {
-        affected.ranges.forEach((range, rangeIndex) => {
-          console.log(`  Range ${rangeIndex}:`, range);
+        affected.ranges.forEach((range) => {
           if (range.events) {
-            range.events.forEach((event, eventIndex) => {
-              console.log(`    Event ${eventIndex}:`, event);
-              // The "fixed" field contains the version that fixes the issue
+            range.events.forEach((event) => {
               if (event.fixed) {
-                console.log(`    ✅ Found fixed version: ${event.fixed}`);
                 fixed.push(event.fixed);
               }
             });
@@ -321,11 +331,9 @@ function getFixedVersions(vuln) {
       
       if (affected.database_specific) {
         if (affected.database_specific.fixed_versions) {
-          console.log(`  Found database_specific.fixed_versions:`, affected.database_specific.fixed_versions);
           fixed.push(...affected.database_specific.fixed_versions);
         }
         if (affected.database_specific.patched_versions) {
-          console.log(`  Found database_specific.patched_versions:`, affected.database_specific.patched_versions);
           fixed.push(...affected.database_specific.patched_versions);
         }
       }
@@ -335,11 +343,9 @@ function getFixedVersions(vuln) {
   // Also check top-level database_specific
   if (vuln.database_specific) {
     if (vuln.database_specific.fixed_versions) {
-      console.log(`Found top-level database_specific.fixed_versions:`, vuln.database_specific.fixed_versions);
       fixed.push(...vuln.database_specific.fixed_versions);
     }
     if (vuln.database_specific.patched_versions) {
-      console.log(`Found top-level database_specific.patched_versions:`, vuln.database_specific.patched_versions);
       fixed.push(...vuln.database_specific.patched_versions);
     }
   }
@@ -347,7 +353,9 @@ function getFixedVersions(vuln) {
   // Remove duplicates and clean up versions
   const uniqueFixed = [...new Set(fixed)].map(v => v.replace(/^v/, ''));
   
-  console.log(`✅ Final fixed versions for ${vuln.id}:`, uniqueFixed);
+  if (uniqueFixed.length > 0) {
+    console.log(`✅ Found ${uniqueFixed.length} fix version(s) for ${vuln.id}:`, uniqueFixed);
+  }
   
   return uniqueFixed;
 }
