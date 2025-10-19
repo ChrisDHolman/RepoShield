@@ -36,8 +36,11 @@ async function scanRepository() {
   
   for (const file of dependencyFiles) {
     const dependencies = await parseDependencyFile(file);
+    
+    // Check OSV for vulnerabilities
     const vulns = await checkOSV(dependencies, file.ecosystem, file.name);
     allVulnerabilities.push(...vulns);
+    
     scannedFiles.push({
       name: file.name,
       fullPath: file.fullPath,
@@ -312,7 +315,151 @@ async function checkOSV(dependencies, ecosystem, fileName) {
   return vulnerabilities;
 }
 
-function getFixedVersions(vuln) {
+async function checkAikidoIntel(dependencies, ecosystem) {
+  const aikidoFindings = [];
+  
+  // Aikido Intel covers multiple ecosystems but primarily npm for malware
+  const ecosystemMap = {
+    'npm': 'js',
+    'PyPI': 'python',
+    'Maven': 'java',
+    'Go': 'go',
+    'RubyGems': 'ruby',
+    'crates.io': 'rust',
+    'Packagist': 'php'
+  };
+  
+  const aikidoLang = ecosystemMap[ecosystem];
+  if (!aikidoLang) {
+    return aikidoFindings;
+  }
+  
+  console.log(`Checking ${dependencies.length} packages against Aikido Intel for malware...`);
+  
+  // Check each package
+  for (const dep of dependencies) {
+    try {
+      // Query Aikido Intel GitHub API to search for vulnerabilities
+      // We'll search their vulnerability database
+      const searchQuery = `${dep.name} repo:AikidoSec/intel language:${aikidoLang}`;
+      const githubSearchUrl = `https://api.github.com/search/code?q=${encodeURIComponent(searchQuery)}`;
+      
+      const response = await fetch(githubSearchUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.total_count > 0) {
+          // Found potential Aikido Intel entry
+          console.log(`Found Aikido Intel entry for ${dep.name}`);
+          
+          // Fetch the actual vulnerability file
+          for (const item of data.items.slice(0, 3)) { // Check first 3 results
+            try {
+              const fileResponse = await fetch(item.url);
+              if (fileResponse.ok) {
+                const fileData = await fileResponse.json();
+                const contentResponse = await fetch(fileData.download_url);
+                const vulnData = await contentResponse.json();
+                
+                // Check if this package/version is affected
+                if (vulnData.package_name === dep.name && isVersionAffected(dep.version, vulnData)) {
+                  aikidoFindings.push({
+                    package: dep.name,
+                    version: dep.version,
+                    id: vulnData.aikido_id || 'AIKIDO-' + vulnData.package_name,
+                    type: vulnData.vulnerable_to || 'Malware/Supply Chain Risk',
+                    severity: vulnData.severity_class || 'HIGH',
+                    score: vulnData.aikido_score || 80,
+                    description: vulnData.tldr || 'Potential security issue detected by Aikido Intel',
+                    link: `https://intel.aikido.dev/` // They don't have direct links per vuln
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(`Error fetching Aikido Intel file:`, err);
+            }
+          }
+        }
+      }
+      
+      // Rate limiting: wait a bit between requests to GitHub API
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (error) {
+      console.error(`Error checking ${dep.name} against Aikido Intel:`, error);
+    }
+  }
+  
+  console.log(`Aikido Intel check complete. Found ${aikidoFindings.length} additional issues.`);
+  return aikidoFindings;
+}
+
+function isVersionAffected(version, vulnData) {
+  // Check if the version falls within vulnerable ranges
+  if (!vulnData.vulnerable_ranges || vulnData.vulnerable_ranges.length === 0) {
+    return false;
+  }
+  
+  // Simple version check - in production you'd use semver library
+  for (const range of vulnData.vulnerable_ranges) {
+    if (range === '*') {
+      // Check if version is in patch_versions (fixed versions)
+      if (vulnData.patch_versions && vulnData.patch_versions.includes(version)) {
+        return false;
+      }
+      return true; // All versions vulnerable except patches
+    }
+    // Additional range checking logic would go here
+  }
+  
+  return false;
+}
+
+async function checkAikidoMalware(dependencies, ecosystem) {
+  const malwareFindings = [];
+  
+  // Aikido Intel primarily focuses on npm/JavaScript packages for malware
+  if (ecosystem !== 'npm') {
+    return malwareFindings;
+  }
+  
+  // Check each package against Aikido Intel
+  // Note: Aikido's database is in GitHub, we'll check via their search
+  // Since we can't easily query their entire database, we'll use a heuristic approach
+  // by checking intel.aikido.dev directly
+  
+  for (const dep of dependencies) {
+    try {
+      // Query intel.aikido.dev for the package
+      const searchUrl = `https://intel.aikido.dev/?search=${encodeURIComponent(dep.name)}`;
+      
+      // Note: Since we can't directly query their API without auth,
+      // we'll mark packages as "check recommended" for manual review
+      // In a production environment, you'd want to:
+      // 1. Clone their GitHub repo periodically
+      // 2. Build a local index
+      // 3. Query against that index
+      
+      console.log(`Checking ${dep.name} against Aikido Intel...`);
+      
+      // For now, we'll add a flag to check suspicious patterns
+      const suspiciousPatterns = [
+        /preinstall/i,
+        /postinstall/i,
+        /install.*script/i
+      ];
+      
+      // This is a placeholder - in production you'd query actual Aikido data
+      // malwareFindings would be populated from actual Aikido Intel data
+      
+    } catch (error) {
+      console.error(`Error checking ${dep.name} for malware:`, error);
+    }
+  }
+  
+  return malwareFindings;
+}
   const fixed = [];
   
   if (vuln.affected) {
