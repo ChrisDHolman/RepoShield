@@ -77,7 +77,7 @@ async function findDependencyFiles() {
   const files = [];
   const seenUrls = new Set(); // Track URLs we've already added
   
-  // Check for common dependency files in the file tree
+  // Strategy 1: Check visible files in the current view
   const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
   
   const dependencyFileMap = {
@@ -102,10 +102,8 @@ async function findDependencyFiles() {
   fileLinks.forEach(link => {
     const fileName = link.textContent.trim();
     if (dependencyFileMap[fileName]) {
-      // Extract the full path from the URL
       const url = link.href;
       
-      // Make sure we have a valid absolute URL and haven't seen it before
       if (!url || url === '#' || url.startsWith('chrome-extension://') || seenUrls.has(url)) {
         if (seenUrls.has(url)) {
           console.log('Skipping duplicate file:', fileName, url);
@@ -115,19 +113,14 @@ async function findDependencyFiles() {
         return;
       }
       
-      seenUrls.add(url); // Mark this URL as seen
-      
+      seenUrls.add(url);
       console.log('Found dependency file:', fileName, 'Full URL:', url);
       
-      // Extract the full GitHub-style path including owner/repo/blob/branch/path
       let fullPath = fileName;
-      
-      // Try to extract the full path from URL: owner/repo/blob/branch/path/to/file
       const githubPathMatch = url.match(/github\.com\/(.+)/);
       if (githubPathMatch) {
         fullPath = githubPathMatch[1];
       } else {
-        // Fallback: just extract after /blob/ or /tree/
         let pathMatch = url.match(/\/blob\/[^\/]+\/(.+)/);
         if (pathMatch) {
           fullPath = pathMatch[1];
@@ -149,6 +142,45 @@ async function findDependencyFiles() {
       });
     }
   });
+
+  // Strategy 2: Use GitHub's search API to find all dependency files in the repo
+  const repoInfo = extractRepoInfo();
+  if (repoInfo && files.length < 10) { // Only search if we haven't found many files
+    console.log('Searching for additional dependency files via GitHub search...');
+    
+    for (const [filename, ecosystem] of Object.entries(dependencyFileMap)) {
+      try {
+        const searchQuery = `filename:${filename} repo:${repoInfo.owner}/${repoInfo.repo}`;
+        const searchUrl = `https://api.github.com/search/code?q=${encodeURIComponent(searchQuery)}&per_page=20`;
+        
+        const response = await fetch(searchUrl);
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`Found ${data.total_count} ${filename} files via search`);
+          
+          for (const item of data.items) {
+            const url = item.html_url;
+            if (!seenUrls.has(url)) {
+              seenUrls.add(url);
+              files.push({
+                name: filename,
+                fullPath: item.path,
+                ecosystem: ecosystem,
+                url: url
+              });
+              console.log('Added from search:', filename, 'at', item.path);
+            }
+          }
+        }
+        
+        // Rate limiting: wait between requests
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`Error searching for ${filename}:`, error);
+      }
+    }
+  }
 
   console.log('Total unique dependency files found:', files.length, files);
   return files;
