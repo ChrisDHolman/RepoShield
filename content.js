@@ -116,18 +116,23 @@ async function findDependencyFiles() {
       
       console.log('Found dependency file:', fileName, 'Full URL:', url);
       
-      // Try multiple patterns to extract path
+      // Extract the full GitHub-style path including owner/repo/blob/branch/path
       let fullPath = fileName;
       
-      // Pattern 1: /blob/branch/path/to/file
-      let pathMatch = url.match(/\/blob\/[^\/]+\/(.+)/);
-      if (pathMatch) {
-        fullPath = pathMatch[1];
+      // Try to extract the full path from URL: owner/repo/blob/branch/path/to/file
+      const githubPathMatch = url.match(/github\.com\/(.+)/);
+      if (githubPathMatch) {
+        fullPath = githubPathMatch[1];
       } else {
-        // Pattern 2: /tree/branch/path (for directories)
-        pathMatch = url.match(/\/tree\/[^\/]+\/(.+)/);
+        // Fallback: just extract after /blob/ or /tree/
+        let pathMatch = url.match(/\/blob\/[^\/]+\/(.+)/);
         if (pathMatch) {
-          fullPath = pathMatch[1] + '/' + fileName;
+          fullPath = pathMatch[1];
+        } else {
+          pathMatch = url.match(/\/tree\/[^\/]+\/(.+)/);
+          if (pathMatch) {
+            fullPath = pathMatch[1] + '/' + fileName;
+          }
         }
       }
       
