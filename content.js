@@ -77,9 +77,6 @@ async function findDependencyFiles() {
   const files = [];
   const seenUrls = new Set();
   
-  // Check for common dependency files in the file tree
-  const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
-  
   const dependencyFileMap = {
     'package.json': 'npm',
     'package-lock.json': 'npm',
@@ -100,6 +97,8 @@ async function findDependencyFiles() {
   };
 
   // Scan visible files first
+  const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
+  
   fileLinks.forEach(link => {
     const fileName = link.textContent.trim();
     if (dependencyFileMap[fileName]) {
@@ -126,25 +125,15 @@ async function findDependencyFiles() {
     }
   });
 
-  // Now recursively search for dependency files in the entire repo
+  // Try to get the entire repo tree in one request
   const repoInfo = extractRepoInfo();
   if (repoInfo) {
-    console.log('Recursively searching repository for all dependency files...');
+    console.log('Fetching complete repository tree...');
     
-    // Get the default branch
     const branch = await getDefaultBranch(repoInfo);
+    const treeFiles = await getRepoTree(repoInfo.owner, repoInfo.repo, branch, dependencyFileMap, seenUrls);
     
-    // Recursively fetch all dependency files
-    const nestedFiles = await findDependencyFilesRecursive(
-      repoInfo.owner, 
-      repoInfo.repo, 
-      branch, 
-      '', 
-      dependencyFileMap,
-      seenUrls
-    );
-    
-    files.push(...nestedFiles);
+    files.push(...treeFiles);
   }
 
   console.log('Total unique dependency files found:', files.length);
@@ -152,78 +141,76 @@ async function findDependencyFiles() {
 }
 
 async function getDefaultBranch(repoInfo) {
-  // Try to extract from current URL
   const branchMatch = window.location.pathname.match(/\/(tree|blob)\/([^\/]+)/);
   if (branchMatch) {
     return branchMatch[2];
   }
-  
-  // Default to 'main', fallback to 'master'
   return 'main';
 }
 
-async function findDependencyFilesRecursive(owner, repo, branch, path, dependencyFileMap, seenUrls, depth = 0) {
+async function getRepoTree(owner, repo, branch, dependencyFileMap, seenUrls) {
   const files = [];
-  const maxDepth = 5; // Prevent infinite recursion
-  
-  if (depth > maxDepth) {
-    console.log('Max depth reached, stopping recursion');
-    return files;
-  }
   
   try {
-    // Use GitHub's tree API (works without auth for public repos)
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+    // Get the commit SHA for the branch
+    const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`;
+    const refResponse = await fetch(refUrl);
     
-    const response = await fetch(apiUrl);
-    
-    if (!response.ok) {
-      console.log(`Could not fetch directory ${path}: ${response.status}`);
+    if (!refResponse.ok) {
+      console.log('Could not fetch branch ref, skipping tree scan');
       return files;
     }
     
-    const items = await response.json();
+    const refData = await refResponse.json();
+    const commitSha = refData.object.sha;
     
-    for (const item of items) {
-      if (item.type === 'file' && dependencyFileMap[item.name]) {
-        const fileUrl = `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`;
+    // Get the entire tree recursively
+    const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${commitSha}?recursive=1`;
+    const treeResponse = await fetch(treeUrl);
+    
+    if (!treeResponse.ok) {
+      console.log('Could not fetch repository tree, skipping tree scan');
+      return files;
+    }
+    
+    const treeData = await treeResponse.json();
+    
+    // Filter for dependency files
+    const skipDirs = ['node_modules', '.git', 'dist', 'build', 'out', 'target', 'vendor', 'test', 'tests', '__tests__', 'coverage'];
+    
+    for (const item of treeData.tree) {
+      if (item.type === 'blob') {
+        const filename = item.path.split('/').pop();
         
-        if (!seenUrls.has(fileUrl)) {
-          seenUrls.add(fileUrl);
+        // Check if it's a dependency file
+        if (dependencyFileMap[filename]) {
+          // Skip if in excluded directory
+          const shouldSkip = skipDirs.some(dir => item.path.includes(`/${dir}/`) || item.path.startsWith(`${dir}/`));
           
-          files.push({
-            name: item.name,
-            fullPath: `${owner}/${repo}/blob/${branch}/${item.path}`,
-            ecosystem: dependencyFileMap[item.name],
-            url: fileUrl
-          });
-          
-          console.log(`Found nested file: ${item.path}`);
-        }
-      } else if (item.type === 'dir') {
-        // Skip common directories that won't have dependencies
-        const skipDirs = ['node_modules', '.git', 'dist', 'build', 'out', 'target', 'vendor'];
-        if (!skipDirs.includes(item.name)) {
-          // Recursively search subdirectories
-          const nestedFiles = await findDependencyFilesRecursive(
-            owner, 
-            repo, 
-            branch, 
-            item.path, 
-            dependencyFileMap,
-            seenUrls,
-            depth + 1
-          );
-          files.push(...nestedFiles);
+          if (!shouldSkip) {
+            const fileUrl = `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`;
+            
+            if (!seenUrls.has(fileUrl)) {
+              seenUrls.add(fileUrl);
+              
+              files.push({
+                name: filename,
+                fullPath: `${owner}/${repo}/blob/${branch}/${item.path}`,
+                ecosystem: dependencyFileMap[filename],
+                url: fileUrl
+              });
+              
+              console.log(`Found: ${item.path}`);
+            }
+          }
         }
       }
     }
     
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log(`✅ Found ${files.length} dependency files in repository tree`);
     
   } catch (error) {
-    console.error(`Error scanning directory ${path}:`, error);
+    console.error('Error fetching repository tree:', error);
   }
   
   return files;
