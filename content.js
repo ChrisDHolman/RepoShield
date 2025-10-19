@@ -264,6 +264,9 @@ async function checkOSV(dependencies, ecosystem, fileName) {
             const severity = getSeverity(vuln);
             console.log(`Vulnerability ${vuln.id}: severity = ${severity}`, vuln.severity);
             
+            // Log the entire vulnerability object to see its structure
+            console.log(`Full vulnerability data for ${vuln.id}:`, JSON.stringify(vuln, null, 2));
+            
             vulnerabilities.push({
               package: dep.name,
               version: dep.version,
@@ -289,14 +292,26 @@ async function checkOSV(dependencies, ecosystem, fileName) {
 function getFixedVersions(vuln) {
   const fixed = [];
   
+  console.log(`Analyzing fix versions for ${vuln.id}`);
+  
   if (vuln.affected) {
-    vuln.affected.forEach(affected => {
+    console.log(`Found ${vuln.affected.length} affected entries`);
+    vuln.affected.forEach((affected, affectedIndex) => {
+      console.log(`Affected entry ${affectedIndex}:`, {
+        package: affected.package,
+        ranges: affected.ranges,
+        database_specific: affected.database_specific
+      });
+      
       if (affected.ranges) {
-        affected.ranges.forEach(range => {
+        affected.ranges.forEach((range, rangeIndex) => {
+          console.log(`  Range ${rangeIndex}:`, range);
           if (range.events) {
-            range.events.forEach(event => {
+            range.events.forEach((event, eventIndex) => {
+              console.log(`    Event ${eventIndex}:`, event);
               // The "fixed" field contains the version that fixes the issue
               if (event.fixed) {
+                console.log(`    ✅ Found fixed version: ${event.fixed}`);
                 fixed.push(event.fixed);
               }
             });
@@ -304,18 +319,13 @@ function getFixedVersions(vuln) {
         });
       }
       
-      // Also check for versions array (patched versions)
-      if (affected.versions) {
-        // Find the last known vulnerable version, next would be fixed
-        const sortedVersions = affected.versions.sort();
-        // This is a simplified approach - in reality version sorting is complex
-      }
-      
       if (affected.database_specific) {
         if (affected.database_specific.fixed_versions) {
+          console.log(`  Found database_specific.fixed_versions:`, affected.database_specific.fixed_versions);
           fixed.push(...affected.database_specific.fixed_versions);
         }
         if (affected.database_specific.patched_versions) {
+          console.log(`  Found database_specific.patched_versions:`, affected.database_specific.patched_versions);
           fixed.push(...affected.database_specific.patched_versions);
         }
       }
@@ -325,9 +335,11 @@ function getFixedVersions(vuln) {
   // Also check top-level database_specific
   if (vuln.database_specific) {
     if (vuln.database_specific.fixed_versions) {
+      console.log(`Found top-level database_specific.fixed_versions:`, vuln.database_specific.fixed_versions);
       fixed.push(...vuln.database_specific.fixed_versions);
     }
     if (vuln.database_specific.patched_versions) {
+      console.log(`Found top-level database_specific.patched_versions:`, vuln.database_specific.patched_versions);
       fixed.push(...vuln.database_specific.patched_versions);
     }
   }
@@ -335,12 +347,7 @@ function getFixedVersions(vuln) {
   // Remove duplicates and clean up versions
   const uniqueFixed = [...new Set(fixed)].map(v => v.replace(/^v/, ''));
   
-  console.log('Fixed versions found for', vuln.id, ':', uniqueFixed, 'Raw vuln data:', {
-    affected: vuln.affected?.map(a => ({
-      ranges: a.ranges,
-      database_specific: a.database_specific
-    }))
-  });
+  console.log(`✅ Final fixed versions for ${vuln.id}:`, uniqueFixed);
   
   return uniqueFixed;
 }
