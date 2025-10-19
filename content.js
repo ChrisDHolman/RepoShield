@@ -75,9 +75,9 @@ function extractRepoInfo() {
 
 async function findDependencyFiles() {
   const files = [];
-  const seenUrls = new Set(); // Track URLs we've already added
+  const seenUrls = new Set();
   
-  // Strategy 1: Check visible files in the current view
+  // Check for common dependency files in the file tree
   const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
   
   const dependencyFileMap = {
@@ -99,40 +99,23 @@ async function findDependencyFiles() {
     'composer.lock': 'Packagist'
   };
 
+  // Scan visible files first
   fileLinks.forEach(link => {
     const fileName = link.textContent.trim();
     if (dependencyFileMap[fileName]) {
       const url = link.href;
       
       if (!url || url === '#' || url.startsWith('chrome-extension://') || seenUrls.has(url)) {
-        if (seenUrls.has(url)) {
-          console.log('Skipping duplicate file:', fileName, url);
-        } else {
-          console.warn('Invalid URL for file:', fileName, url);
-        }
         return;
       }
       
       seenUrls.add(url);
-      console.log('Found dependency file:', fileName, 'Full URL:', url);
       
       let fullPath = fileName;
       const githubPathMatch = url.match(/github\.com\/(.+)/);
       if (githubPathMatch) {
         fullPath = githubPathMatch[1];
-      } else {
-        let pathMatch = url.match(/\/blob\/[^\/]+\/(.+)/);
-        if (pathMatch) {
-          fullPath = pathMatch[1];
-        } else {
-          pathMatch = url.match(/\/tree\/[^\/]+\/(.+)/);
-          if (pathMatch) {
-            fullPath = pathMatch[1] + '/' + fileName;
-          }
-        }
       }
-      
-      console.log('Extracted path:', fullPath, 'Using URL:', url);
       
       files.push({
         name: fileName,
@@ -143,46 +126,106 @@ async function findDependencyFiles() {
     }
   });
 
-  // Strategy 2: Use GitHub's search API to find all dependency files in the repo
+  // Now recursively search for dependency files in the entire repo
   const repoInfo = extractRepoInfo();
-  if (repoInfo && files.length < 10) { // Only search if we haven't found many files
-    console.log('Searching for additional dependency files via GitHub search...');
+  if (repoInfo) {
+    console.log('Recursively searching repository for all dependency files...');
     
-    for (const [filename, ecosystem] of Object.entries(dependencyFileMap)) {
-      try {
-        const searchQuery = `filename:${filename} repo:${repoInfo.owner}/${repoInfo.repo}`;
-        const searchUrl = `https://api.github.com/search/code?q=${encodeURIComponent(searchQuery)}&per_page=20`;
-        
-        const response = await fetch(searchUrl);
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`Found ${data.total_count} ${filename} files via search`);
-          
-          for (const item of data.items) {
-            const url = item.html_url;
-            if (!seenUrls.has(url)) {
-              seenUrls.add(url);
-              files.push({
-                name: filename,
-                fullPath: item.path,
-                ecosystem: ecosystem,
-                url: url
-              });
-              console.log('Added from search:', filename, 'at', item.path);
-            }
-          }
-        }
-        
-        // Rate limiting: wait between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error) {
-        console.error(`Error searching for ${filename}:`, error);
-      }
-    }
+    // Get the default branch
+    const branch = await getDefaultBranch(repoInfo);
+    
+    // Recursively fetch all dependency files
+    const nestedFiles = await findDependencyFilesRecursive(
+      repoInfo.owner, 
+      repoInfo.repo, 
+      branch, 
+      '', 
+      dependencyFileMap,
+      seenUrls
+    );
+    
+    files.push(...nestedFiles);
   }
 
-  console.log('Total unique dependency files found:', files.length, files);
+  console.log('Total unique dependency files found:', files.length);
+  return files;
+}
+
+async function getDefaultBranch(repoInfo) {
+  // Try to extract from current URL
+  const branchMatch = window.location.pathname.match(/\/(tree|blob)\/([^\/]+)/);
+  if (branchMatch) {
+    return branchMatch[2];
+  }
+  
+  // Default to 'main', fallback to 'master'
+  return 'main';
+}
+
+async function findDependencyFilesRecursive(owner, repo, branch, path, dependencyFileMap, seenUrls, depth = 0) {
+  const files = [];
+  const maxDepth = 5; // Prevent infinite recursion
+  
+  if (depth > maxDepth) {
+    console.log('Max depth reached, stopping recursion');
+    return files;
+  }
+  
+  try {
+    // Use GitHub's tree API (works without auth for public repos)
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+    
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      console.log(`Could not fetch directory ${path}: ${response.status}`);
+      return files;
+    }
+    
+    const items = await response.json();
+    
+    for (const item of items) {
+      if (item.type === 'file' && dependencyFileMap[item.name]) {
+        const fileUrl = `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`;
+        
+        if (!seenUrls.has(fileUrl)) {
+          seenUrls.add(fileUrl);
+          
+          files.push({
+            name: item.name,
+            fullPath: `${owner}/${repo}/blob/${branch}/${item.path}`,
+            ecosystem: dependencyFileMap[item.name],
+            url: fileUrl
+          });
+          
+          console.log(`Found nested file: ${item.path}`);
+        }
+      } else if (item.type === 'dir') {
+        // Skip common directories that won't have dependencies
+        const skipDirs = ['node_modules', '.git', 'dist', 'build', 'out', 'target', 'vendor'];
+        if (!skipDirs.includes(item.name)) {
+          // Recursively search subdirectories
+          const nestedFiles = await findDependencyFilesRecursive(
+            owner, 
+            repo, 
+            branch, 
+            item.path, 
+            dependencyFileMap,
+            seenUrls,
+            depth + 1
+          );
+          files.push(...nestedFiles);
+        }
+      }
+    }
+    
+    // Small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+  } catch (error) {
+    console.error(`Error scanning directory ${path}:`, error);
+  }
+  
   return files;
 }
 
