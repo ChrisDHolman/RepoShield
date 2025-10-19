@@ -1,0 +1,35 @@
+# .github/dependabot.yml
+# Automatically checks for dependency updates and security vulnerabilities
+
+version: 2
+updates:
+  # Monitor GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+
+  # Monitor npm dependencies (if you add any)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "deps"
+    # Only allow security updates and patch versions
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
