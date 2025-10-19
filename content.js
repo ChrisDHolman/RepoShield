@@ -295,6 +295,7 @@ function getFixedVersions(vuln) {
         affected.ranges.forEach(range => {
           if (range.events) {
             range.events.forEach(event => {
+              // The "fixed" field contains the version that fixes the issue
               if (event.fixed) {
                 fixed.push(event.fixed);
               }
@@ -334,7 +335,12 @@ function getFixedVersions(vuln) {
   // Remove duplicates and clean up versions
   const uniqueFixed = [...new Set(fixed)].map(v => v.replace(/^v/, ''));
   
-  console.log('Fixed versions found for', vuln.id, ':', uniqueFixed);
+  console.log('Fixed versions found for', vuln.id, ':', uniqueFixed, 'Raw vuln data:', {
+    affected: vuln.affected?.map(a => ({
+      ranges: a.ranges,
+      database_specific: a.database_specific
+    }))
+  });
   
   return uniqueFixed;
 }
