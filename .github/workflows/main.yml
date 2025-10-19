@@ -21,6 +21,16 @@ on:
         required: false
         default: 'true'
         type: boolean
+      create_release:
+        description: 'Create a GitHub release (requires version tag)'
+        required: false
+        default: 'false'
+        type: boolean
+      release_tag:
+        description: 'Release tag (e.g., v1.0.0) - only used if create_release is true'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   # Lint and validate code quality
@@ -88,11 +98,20 @@ jobs:
       
       # Check for known malicious packages
       - name: Socket Security Scan
-        if: github.event_name != 'schedule'
+        if: github.event_name == 'pull_request'
+        uses: SocketDev/socket-security-github-action@v1
+        with:
+          api-token: ${{ secrets.SOCKET_API_TOKEN }}
+          # Skip this check if no API token configured
+          continue-on-error: true
+      
+      - name: Socket Security Notice
+        if: github.event_name != 'pull_request'
         run: |
-          echo "Checking for malicious dependencies..."
-          # For now just a placeholder - would need Socket.dev integration
-          echo "✓ No package.json dependencies to scan"
+          echo "ℹ️ Socket Security scanning only runs on pull requests"
+          echo "To enable malware detection:"
+          echo "1. Install Socket GitHub App: https://github.com/apps/socket-security"
+          echo "2. Or add SOCKET_API_TOKEN secret for API access"
       
       # Validate CSP and permissions
       - name: Validate Content Security Policy
@@ -288,7 +307,10 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: [build, test, security]
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Run on version tags OR manual trigger with release option
+    if: |
+      startsWith(github.ref, 'refs/tags/v') || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
     permissions:
       contents: write
     steps:
@@ -299,9 +321,33 @@ jobs:
         with:
           name: extension-build
       
+      - name: Determine release tag
+        id: get_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.release_tag }}"
+            if [[ -z "$TAG" ]]; then
+              echo "Error: release_tag input is required for manual releases"
+              exit 1
+            fi
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Creating release for tag: $TAG"
+      
+      - name: Create or update tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f ${{ steps.get_tag.outputs.tag }}
+          git push -f origin ${{ steps.get_tag.outputs.tag }}
+      
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
           files: reposhield-*.zip
           generate_release_notes: true
           draft: false
