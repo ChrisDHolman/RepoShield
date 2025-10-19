@@ -186,9 +186,13 @@ function displayResults(results) {
       const sev = v.severity.toUpperCase();
       return sev === 'MEDIUM' || sev === 'MODERATE';
     }).length;
+    
+    const fixableCount = results.vulnerabilities.filter(v => 
+      v.fixedVersions && v.fixedVersions.length > 0
+    ).length;
 
     console.log('Severity breakdown:', { criticalCount, highCount, mediumCount, total: vulnCount });
-    console.log('All severities:', results.vulnerabilities.map(v => v.severity));
+    console.log('Fixable vulnerabilities:', fixableCount, 'out of', vulnCount);
 
     html += `
       <div class="status danger">
@@ -196,6 +200,7 @@ function displayResults(results) {
         <div>
           <strong>Vulnerabilities Detected</strong><br>
           Found ${vulnCount} ${vulnCount === 1 ? 'security issue' : 'security issues'} in your dependencies.
+          ${fixableCount > 0 ? `<br><span style="color: #059669; font-weight: 600;">${fixableCount} ${fixableCount === 1 ? 'has' : 'have'} fixes available</span>` : ''}
         </div>
       </div>
     `;
@@ -214,6 +219,19 @@ function displayResults(results) {
         <div class="summary-item">
           <div class="summary-number" style="color: #f59e0b">${mediumCount}</div>
           <div class="summary-label">Medium</div>
+        </div>
+      </div>
+    `;
+    
+    // Add fixable summary card
+    html += `
+      <div class="fix-summary">
+        <div class="fix-summary-content">
+          <div class="fix-summary-icon">&#x1F6E0;&#xFE0F;</div>
+          <div class="fix-summary-text">
+            <div class="fix-summary-title">${fixableCount} of ${vulnCount} fixable</div>
+            <div class="fix-summary-subtitle">${vulnCount - fixableCount} require manual review</div>
+          </div>
         </div>
       </div>
     `;
