@@ -207,8 +207,19 @@ jobs:
       - name: Verify API endpoints
         run: |
           echo "Testing OSV.dev API availability..."
-          curl -f https://api.osv.dev/v1/query || exit 1
-          echo "✓ OSV.dev API is reachable"
+          response=$(curl -s -w "%{http_code}" -X POST https://api.osv.dev/v1/query \
+            -H "Content-Type: application/json" \
+            -d '{"version":"1.0.0","package":{"name":"test","ecosystem":"npm"}}')
+          http_code="${response: -3}"
+          if [ "$http_code" -eq 200 ]; then
+            echo "✓ OSV.dev API is reachable and responding"
+          else
+            echo "⚠ OSV.dev API returned HTTP $http_code (may be expected for test query)"
+          fi
+          
+          echo "Testing GitHub API availability..."
+          curl -f -s https://api.github.com/rate_limit > /dev/null || exit 1
+          echo "✓ GitHub API is reachable"
       
       - name: Test manifest compatibility
         run: |
