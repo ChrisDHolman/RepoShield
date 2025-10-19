@@ -10,106 +10,105 @@
     }
 
     body {
-      width: 480px;
-      min-height: 400px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
-      background: #fafbfc;
-      color: #24292f;
+      width: 420px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
     }
 
     .header {
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      padding: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      border-radius: 50%;
-    }
-
-    .header-content {
-      position: relative;
-      z-index: 1;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      padding: 32px 24px;
+      border-bottom: 1px solid #334155;
     }
 
     .logo-section {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 14px;
     }
 
     .logo {
-      width: 32px;
-      height: 32px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      backdrop-filter: blur(10px);
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
 
     .header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      color: #f1f5f9;
       letter-spacing: -0.5px;
+      margin-bottom: 2px;
     }
 
     .header p {
       font-size: 13px;
-      color: rgba(255,255,255,0.85);
-      font-weight: 500;
+      color: #94a3b8;
+      font-weight: 400;
     }
 
     .content {
-      padding: 20px;
+      padding: 24px;
+    }
+
+    .empty-scan-state {
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .shield-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      opacity: 0.9;
+    }
+
+    .empty-scan-state h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+    }
+
+    .empty-scan-state p {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 24px;
     }
 
     .scan-button {
       width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      padding: 16px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
       border: none;
-      border-radius: 10px;
-      font-size: 14px;
+      border-radius: 8px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .scan-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
-    }
-
-    .scan-button:hover::before {
-      left: 100%;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+      letter-spacing: 0.3px;
     }
 
     .scan-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
     }
 
     .scan-button:active {
@@ -117,8 +116,8 @@
     }
 
     .scan-button:disabled {
-      background: #e5e7eb;
-      color: #9ca3af;
+      background: #334155;
+      color: #64748b;
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
@@ -126,115 +125,94 @@
 
     .status {
       margin-top: 20px;
-      padding: 16px;
-      border-radius: 10px;
+      padding: 14px 16px;
+      border-radius: 8px;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.5;
       display: flex;
       align-items: flex-start;
       gap: 12px;
-      animation: slideIn 0.3s ease;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      border: 1px solid;
     }
 
     .status-icon {
-      font-size: 20px;
+      font-size: 18px;
       flex-shrink: 0;
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
     .status.safe {
-      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-      color: #065f46;
-      border: 1px solid #a7f3d0;
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #10b981;
     }
 
     .status.danger {
-      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-      color: #991b1b;
-      border: 1px solid #fecaca;
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
     }
 
     .status.info {
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      color: #1e40af;
-      border: 1px solid #bfdbfe;
+      background: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
     }
 
     .repo-info {
-      margin-top: 16px;
+      margin-top: 20px;
       padding: 16px;
-      background: white;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
     }
 
     .repo-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 10px;
+      margin-bottom: 6px;
     }
 
     .repo-name {
       font-weight: 600;
-      color: #6366f1;
+      color: #10b981;
       font-size: 14px;
     }
 
     .repo-meta {
       font-size: 12px;
-      color: #6b7280;
+      color: #64748b;
+    }
+
+    .monorepo-notice {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .monorepo-notice strong {
+      color: #3b82f6;
+      display: block;
+      margin-bottom: 4px;
     }
 
     .files-scanned {
-      margin-top: 16px;
-    }
-
-    .malware-notice {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      background: linear-gradient(135deg, #fef3c7 0%, #fef08a 100%);
-      border: 1px solid #fde047;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .malware-notice-text {
-      flex: 1;
-      font-size: 12px;
-      color: #854d0e;
-    }
-
-    .malware-notice-text strong {
-      color: #713f12;
-      font-size: 13px;
+      margin-top: 20px;
     }
 
     .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: #6b7280;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
       margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .file-item-link {
@@ -246,71 +224,58 @@
     .file-item {
       padding: 12px;
       margin-bottom: 8px;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      cursor: pointer;
     }
 
     .file-item-link:hover .file-item {
-      border-color: #6366f1;
-      box-shadow: 0 2px 8px rgba(99,102,241,0.15);
-      background: #fafbff;
+      border-color: #10b981;
+      background: #1e293b;
     }
 
     .file-left {
       display: flex;
       align-items: center;
       gap: 10px;
+      flex: 1;
+      min-width: 0;
     }
 
     .file-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
+      font-size: 16px;
+      flex-shrink: 0;
     }
 
     .file-details {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
+      flex: 1;
+      min-width: 0;
     }
 
     .file-path {
       font-size: 11px;
-      color: #6b7280;
+      color: #64748b;
       font-family: 'Monaco', 'Menlo', monospace;
-      word-break: break-all;
-    }
-
-    .file-item-link:hover .file-path {
-      color: #8b5cf6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .file-name {
-      font-weight: 600;
-      color: #24292f;
+      font-weight: 500;
+      color: #e2e8f0;
       font-size: 13px;
-    }
-
-    .file-item-link:hover .file-name {
-      color: #6366f1;
+      margin-top: 2px;
     }
 
     .file-stats {
-      color: #6b7280;
+      color: #64748b;
       font-size: 11px;
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .file-status {
@@ -319,43 +284,67 @@
       font-size: 11px;
       font-weight: 600;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .file-status.clean {
-      background: #d1fae5;
-      color: #065f46;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
     }
 
     .file-status.vulnerable {
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
     }
 
     .summary {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 10px;
       margin-top: 16px;
+    }
+
+    .summary-item {
+      background: #1e293b;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .summary-item:hover {
+      border-color: #475569;
+    }
+
+    .summary-number {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .summary-label {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .fix-summary {
       margin-top: 12px;
-      padding: 16px;
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      border: 1px solid #bbf7d0;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .fix-summary-content {
+      padding: 12px 14px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 6px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .fix-summary-icon {
-      font-size: 24px;
-      flex-shrink: 0;
+      font-size: 20px;
     }
 
     .fix-summary-text {
@@ -363,50 +352,20 @@
     }
 
     .fix-summary-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #065f46;
+      font-size: 14px;
+      font-weight: 600;
+      color: #10b981;
       margin-bottom: 2px;
     }
 
     .fix-summary-subtitle {
-      font-size: 12px;
-      color: #047857;
-    }
-
-    .summary-item {
-      background: white;
-      padding: 16px;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
-      text-align: center;
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-
-    .summary-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-    }
-
-    .summary-number {
-      font-size: 28px;
-      font-weight: 800;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-
-    .summary-label {
       font-size: 11px;
-      color: #6b7280;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: #64748b;
     }
 
     .vulnerabilities {
       margin-top: 16px;
-      max-height: 500px;
+      max-height: 450px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -416,45 +375,34 @@
     }
 
     .vulnerabilities::-webkit-scrollbar-track {
-      background: #f3f4f6;
+      background: #1e293b;
       border-radius: 3px;
     }
 
     .vulnerabilities::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+      background: #334155;
       border-radius: 3px;
     }
 
-    .vulnerabilities::-webkit-scrollbar-thumb:hover {
-      background: #9ca3af;
-    }
-
     .vuln-item {
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-left: 4px solid #dc2626;
-      padding: 16px;
-      margin-bottom: 12px;
-      border-radius: 10px;
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .vuln-item:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      transform: translateX(2px);
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-left: 3px solid #ef4444;
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 6px;
     }
 
     .vuln-item.critical {
-      border-left-color: #dc2626;
+      border-left-color: #ef4444;
     }
 
     .vuln-item.high {
-      border-left-color: #ea580c;
+      border-left-color: #f97316;
     }
 
     .vuln-item.medium {
-      border-left-color: #f59e0b;
+      border-left-color: #eab308;
     }
 
     .vuln-item.low {
@@ -465,135 +413,106 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       gap: 8px;
     }
 
     .vuln-id {
-      font-weight: 700;
-      color: #6366f1;
-      font-size: 13px;
+      font-weight: 600;
+      color: #10b981;
+      font-size: 12px;
       font-family: 'Monaco', 'Menlo', monospace;
     }
 
     .severity-badge {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .severity-badge.critical {
-      background: #dc2626;
-      color: white;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
     }
 
     .severity-badge.high {
-      background: #ea580c;
-      color: white;
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
     }
 
     .severity-badge.medium {
-      background: #f59e0b;
-      color: #451a03;
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
     }
 
     .severity-badge.low {
-      background: #06b6d4;
-      color: white;
-    }
-
-    .severity-badge.unknown {
-      background: #6b7280;
-      color: white;
+      background: rgba(6, 182, 212, 0.15);
+      color: #06b6d4;
     }
 
     .package-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
       margin-bottom: 10px;
       padding: 10px;
-      background: #f9fafb;
-      border-radius: 6px;
-      border: 1px solid #f3f4f6;
-    }
-
-    .package-icon {
-      font-size: 16px;
-    }
-
-    .package-details {
-      flex: 1;
+      background: #0f172a;
+      border-radius: 4px;
+      border: 1px solid #1e293b;
     }
 
     .package-name {
-      font-weight: 600;
-      color: #24292f;
+      font-weight: 500;
+      color: #e2e8f0;
       font-size: 13px;
       font-family: 'Monaco', 'Menlo', monospace;
+      margin-bottom: 4px;
     }
 
     .package-version {
       font-size: 11px;
-      color: #6b7280;
-      margin-top: 2px;
+      color: #64748b;
     }
 
     .vuln-summary {
-      color: #4b5563;
-      font-size: 13px;
-      line-height: 1.6;
-      margin-bottom: 12px;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 10px;
     }
 
     .vuln-fix {
-      margin-top: 12px;
-      padding: 12px;
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      border-left: 3px solid #3b82f6;
-      border-radius: 6px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .fix-icon {
-      font-size: 16px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .fix-content {
-      flex: 1;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(16, 185, 129, 0.08);
+      border-left: 2px solid #10b981;
+      border-radius: 4px;
     }
 
     .fix-title {
-      font-weight: 700;
-      color: #1e40af;
-      font-size: 12px;
+      font-weight: 600;
+      color: #10b981;
+      font-size: 11px;
       margin-bottom: 4px;
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
 
     .fix-text {
-      font-size: 12px;
-      color: #1e3a8a;
+      font-size: 11px;
+      color: #94a3b8;
       line-height: 1.5;
     }
 
     .fix-version {
       display: inline-block;
-      padding: 2px 8px;
-      background: white;
-      border: 1px solid #bfdbfe;
-      border-radius: 4px;
+      padding: 2px 6px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 3px;
       font-family: 'Monaco', 'Menlo', monospace;
-      font-weight: 600;
-      color: #1e40af;
+      font-weight: 500;
+      color: #10b981;
       font-size: 11px;
       margin: 0 2px;
     }
@@ -601,16 +520,16 @@
     .vuln-meta {
       display: flex;
       gap: 12px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #f3f4f6;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #334155;
     }
 
     .vuln-link {
-      color: #6366f1;
+      color: #10b981;
       text-decoration: none;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 500;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -618,26 +537,25 @@
     }
 
     .vuln-link:hover {
-      color: #4f46e5;
-      gap: 6px;
+      color: #34d399;
     }
 
     .malware-link {
-      color: #dc2626;
+      color: #ef4444;
     }
 
     .malware-link:hover {
-      color: #991b1b;
+      color: #f87171;
     }
 
     .loading {
       text-align: center;
-      padding: 40px 20px;
+      padding: 60px 20px;
     }
 
     .spinner {
-      border: 3px solid #f3f4f6;
-      border-top: 3px solid #6366f1;
+      border: 3px solid #334155;
+      border-top: 3px solid #10b981;
       border-radius: 50%;
       width: 40px;
       height: 40px;
@@ -651,7 +569,7 @@
     }
 
     .loading-text {
-      color: #6b7280;
+      color: #64748b;
       font-size: 14px;
       font-weight: 500;
     }
@@ -659,43 +577,65 @@
     .empty-state {
       text-align: center;
       padding: 40px 20px;
-      color: #6b7280;
     }
 
     .empty-icon {
       font-size: 48px;
       margin-bottom: 16px;
-      opacity: 0.5;
+      opacity: 0.3;
     }
 
     .empty-title {
       font-size: 16px;
       font-weight: 600;
-      color: #24292f;
+      color: #e2e8f0;
       margin-bottom: 8px;
     }
 
     .empty-text {
       font-size: 13px;
+      color: #64748b;
       line-height: 1.6;
+    }
+
+    .malware-notice {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .malware-notice strong {
+      color: #ef4444;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="header-content">
-      <div class="logo-section">
-        <div class="logo">&#x1F6E1;&#xFE0F;</div>
-        <div>
-          <h1>VulnGuard</h1>
-          <p>Scans depedency vulnerabilities at source</p>
-        </div>
+    <div class="logo-section">
+      <div class="logo">&#x1F6E1;&#xFE0F;</div>
+      <div>
+        <h1>VulnGuard</h1>
+        <p>Dependency Security Scanner</p>
       </div>
     </div>
   </div>
 
   <div class="content">
-    <button class="scan-button" id="scanBtn">Scan Repository</button>
+    <div class="empty-scan-state" id="emptyScanState">
+      <div class="shield-icon">&#x1F50D;</div>
+      <h2>Ready to Scan</h2>
+      <p>Navigate to a GitHub repository and click the button below to scan for vulnerabilities.</p>
+    </div>
+    
+    <button class="scan-button" id="scanBtn">Start Security Scan</button>
     
     <div id="results"></div>
   </div>
