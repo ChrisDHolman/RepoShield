@@ -96,7 +96,7 @@ async function findDependencyFiles() {
     'composer.lock': 'Packagist'
   };
 
-  // Scan visible files first
+  // Scan visible files on current page
   const fileLinks = document.querySelectorAll('a[title], div[role="rowheader"] a, a.Link--primary');
   
   fileLinks.forEach(link => {
@@ -125,93 +125,8 @@ async function findDependencyFiles() {
     }
   });
 
-  // Try to get the entire repo tree in one request
-  const repoInfo = extractRepoInfo();
-  if (repoInfo) {
-    console.log('Fetching complete repository tree...');
-    
-    const branch = await getDefaultBranch(repoInfo);
-    const treeFiles = await getRepoTree(repoInfo.owner, repoInfo.repo, branch, dependencyFileMap, seenUrls);
-    
-    files.push(...treeFiles);
-  }
-
-  console.log('Total unique dependency files found:', files.length);
-  return files;
-}
-
-async function getDefaultBranch(repoInfo) {
-  const branchMatch = window.location.pathname.match(/\/(tree|blob)\/([^\/]+)/);
-  if (branchMatch) {
-    return branchMatch[2];
-  }
-  return 'main';
-}
-
-async function getRepoTree(owner, repo, branch, dependencyFileMap, seenUrls) {
-  const files = [];
-  
-  try {
-    // Get the commit SHA for the branch
-    const refUrl = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`;
-    const refResponse = await fetch(refUrl);
-    
-    if (!refResponse.ok) {
-      console.log('Could not fetch branch ref, skipping tree scan');
-      return files;
-    }
-    
-    const refData = await refResponse.json();
-    const commitSha = refData.object.sha;
-    
-    // Get the entire tree recursively
-    const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${commitSha}?recursive=1`;
-    const treeResponse = await fetch(treeUrl);
-    
-    if (!treeResponse.ok) {
-      console.log('Could not fetch repository tree, skipping tree scan');
-      return files;
-    }
-    
-    const treeData = await treeResponse.json();
-    
-    // Filter for dependency files
-    const skipDirs = ['node_modules', '.git', 'dist', 'build', 'out', 'target', 'vendor', 'test', 'tests', '__tests__', 'coverage'];
-    
-    for (const item of treeData.tree) {
-      if (item.type === 'blob') {
-        const filename = item.path.split('/').pop();
-        
-        // Check if it's a dependency file
-        if (dependencyFileMap[filename]) {
-          // Skip if in excluded directory
-          const shouldSkip = skipDirs.some(dir => item.path.includes(`/${dir}/`) || item.path.startsWith(`${dir}/`));
-          
-          if (!shouldSkip) {
-            const fileUrl = `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`;
-            
-            if (!seenUrls.has(fileUrl)) {
-              seenUrls.add(fileUrl);
-              
-              files.push({
-                name: filename,
-                fullPath: `${owner}/${repo}/blob/${branch}/${item.path}`,
-                ecosystem: dependencyFileMap[filename],
-                url: fileUrl
-              });
-              
-              console.log(`Found: ${item.path}`);
-            }
-          }
-        }
-      }
-    }
-    
-    console.log(`✅ Found ${files.length} dependency files in repository tree`);
-    
-  } catch (error) {
-    console.error('Error fetching repository tree:', error);
-  }
+  console.log(`Found ${files.length} dependency files on current page`);
+  console.log('💡 Tip: For monorepos, navigate into subdirectories (like packages/) and scan again to check those files');
   
   return files;
 }
