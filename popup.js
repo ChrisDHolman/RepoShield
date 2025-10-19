@@ -120,25 +120,42 @@ function displayResults(results) {
       else if (file.name.includes('Cargo')) fileEmoji = '&#x1F980;';
       else if (file.name.includes('composer')) fileEmoji = '&#x1F418;';
       
-      const displayPath = file.fullPath || file.name;
-      const fileUrl = file.url || '#';
+      const fileUrl = file.url;
       
-      console.log('Displaying file:', file.name, 'Path:', displayPath, 'URL:', fileUrl);
+      console.log('Displaying file:', file.name, 'Full Path:', file.fullPath, 'URL:', fileUrl);
       
-      html += `
-        <a href="${fileUrl}" target="_blank" class="file-item-link">
+      // Only make clickable if we have a valid URL
+      if (fileUrl && fileUrl.startsWith('http')) {
+        html += `
+          <a href="${fileUrl}" target="_blank" class="file-item-link">
+            <div class="file-item">
+              <div class="file-left">
+                <div class="file-icon">${fileEmoji}</div>
+                <div class="file-details">
+                  <div class="file-path">${file.fullPath || file.name}</div>
+                  <div class="file-name">${file.name}</div>
+                  <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'} &bull; ${file.ecosystem}</div>
+                </div>
+              </div>
+              <div class="file-status ${statusClass}">${statusText}</div>
+            </div>
+          </a>
+        `;
+      } else {
+        html += `
           <div class="file-item">
             <div class="file-left">
               <div class="file-icon">${fileEmoji}</div>
               <div class="file-details">
-                <div class="file-name">${displayPath}</div>
+                <div class="file-path">${file.fullPath || file.name}</div>
+                <div class="file-name">${file.name}</div>
                 <div class="file-stats">${file.dependencyCount} ${file.dependencyCount === 1 ? 'dependency' : 'dependencies'} &bull; ${file.ecosystem}</div>
               </div>
             </div>
             <div class="file-status ${statusClass}">${statusText}</div>
           </div>
-        </a>
-      `;
+        `;
+      }
     });
     html += '</div>';
   }
